@@ -12,8 +12,6 @@ public class StateGetter : MonoBehaviour {
 	Dictionary<string,int> fsmDict;
 	FSMStateContainer[] stateMsgs;
 
-	VJObject[] vjEffects;
-
 	// Use this for initialization
 	void Start () {
 		CollectPlaymakerInfos ();
@@ -29,10 +27,6 @@ public class StateGetter : MonoBehaviour {
 		stateMsgs = new FSMStateContainer[num];
 
 		fsmDict = new Dictionary<string, int> ();
-
-		// for vj slider
-		List<VJObject> vjList = new List<VJObject>();
-
 
 		// add states into dictionaries
 		for (int i = 0; i < num; i++)
@@ -51,8 +45,6 @@ public class StateGetter : MonoBehaviour {
 					if (_states [i].Actions [j].Name == "SliderAction") {
 						stateMsgs [i].hasSlider = true;
 
-						SliderAction sliderAction = (SliderAction)_states [i].Actions [j];
-						vjList.Add (sliderAction.vjSlider);
 					}
 				}
 			}
@@ -74,7 +66,6 @@ public class StateGetter : MonoBehaviour {
 			}
 		}
 
-		vjEffects = vjList.ToArray ();
 	}
 
 	void GetStateRequest ( NetworkMessage netMsg ) {
@@ -92,7 +83,6 @@ public class StateGetter : MonoBehaviour {
 		int index = sliderMsg.sliderIndex;
 		float value = sliderMsg.value;
 
-		vjEffects [index].SetValue (value);
 		Debug.Log ("Get slider [" + index + "]  on value [ " + value + "] ");
 	}
 

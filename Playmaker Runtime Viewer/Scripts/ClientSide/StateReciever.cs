@@ -9,7 +9,6 @@ public class StateReciever : MonoBehaviour {
 
 	public GameObject eventObj;
 	public GameObject lineObj;
-	public GameObject sliderObj;
 
 
 	GameObject[] eventObjs;
@@ -67,7 +66,7 @@ public class StateReciever : MonoBehaviour {
 			eventObjs [i].transform.parent = transform;
 
 			EventObj objScript = eventObjs [i].GetComponent<EventObj> ();
-			objScript.UpdateText (fsms [i].name);
+			objScript.UpdateText (fsms [i].name, fsms[i].description);
 			objScript.UpdateBackSizeByText ();
 
 			// positioning
@@ -77,21 +76,6 @@ public class StateReciever : MonoBehaviour {
 			pos.z = 0.0f;
 
 			eventObjs [i].transform.position = pos;
-
-			// put slider obj if needed
-			if (fsms [i].hasSlider) {
-				GameObject sliderTemp = (GameObject)Instantiate (sliderObj, pos, Quaternion.identity);
-				Vector3 sliderPos = pos;
-				sliderPos.y -= 0.5f;
-				sliderTemp.transform.position = sliderPos;
-
-				SliderDrag sliderScript = sliderTemp.GetComponentInChildren<SliderDrag> ();
-				sliderScript._client = this;
-				sliderScript.stateIndex = sliderIndex;
-				sliderList.Add (sliderScript);
-
-				sliderIndex++;
-			}
 		}
 
 		sliders = sliderList.ToArray ();

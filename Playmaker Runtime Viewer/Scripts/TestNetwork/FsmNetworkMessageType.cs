@@ -8,4 +8,5 @@ public class FsmNetworkMessageType {
 	public static short ClientToServerCommand = MsgType.Highest+3;
 	public static short ServerToClientCommand = MsgType.Highest+4;
 	public static short SliderValueChange = MsgType.Highest+5;
+	public static short PlayMakerStateChange = MsgType.Highest+6;
 }

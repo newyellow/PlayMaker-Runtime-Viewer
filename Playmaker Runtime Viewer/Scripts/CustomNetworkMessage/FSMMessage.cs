@@ -19,8 +19,6 @@ public class FSMStateContainer {
 	public string[] transitionNames;
 	public int[] transitionTargets;
 
-	public bool hasSlider = false;
-
 	public FSMStateContainer () {
 	}
 }
