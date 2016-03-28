@@ -8,9 +8,12 @@ public class DragableCamera : MonoBehaviour {
 
 	Vector3 lastPos;
 
+	// for scorlling
+	float cameraSize = 0.0f;
+
 	// Use this for initialization
 	void Start () {
-	
+		cameraSize = _cam.orthographicSize;
 	}
 	
 	// Update is called once per frame
@@ -34,6 +37,13 @@ public class DragableCamera : MonoBehaviour {
 			// because of camera position change, need to calculate once more
 			lastPos = GetMousePosInWorld();
 		}
+
+
+		if (Input.mouseScrollDelta.magnitude != 0.0f) {
+			cameraSize += Input.mouseScrollDelta.y * -0.1f;
+			_cam.orthographicSize = cameraSize;
+		}
+
 	}
 
 	Vector3 GetMousePosInWorld () {

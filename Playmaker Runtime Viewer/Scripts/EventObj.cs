@@ -10,6 +10,8 @@ public class EventObj : MonoBehaviour {
 	public TextMesh _desc;
 	public GameObject descBack;
 
+	public GameObject outlineObj;
+
 	// Use this for initialization
 	void Start () {
 		
@@ -17,7 +19,10 @@ public class EventObj : MonoBehaviour {
 	
 	// Update is called once per frame
 	void Update () {
-	
+		if (Input.GetKeyDown (KeyCode.A))
+			StateOn ();
+		else if (Input.GetKeyDown (KeyCode.B))
+			StateOff ();
 	}
 
 	public void UpdateText ( string toText, string toDesc ) {
@@ -44,5 +49,32 @@ public class EventObj : MonoBehaviour {
 		descSize.y += 0.2f;
 		descBack.transform.localScale = descSize;
 		descBack.transform.position = descBound.center + new Vector3 (0.0f, 0.0f, 0.5f);;
+	}
+
+	void StateOn () {
+		Vector3 from = backObj.transform.localScale - new Vector3 (0.2f, 0.2f, 0.0f);
+		Vector3 to = backObj.transform.localScale + new Vector3 (0.2f, 0.2f, 0.0f);
+		StartCoroutine (OutlineSizeChange (from, to));
+	}
+
+	void StateOff () {
+		Vector3 from = outlineObj.transform.localScale;
+		Vector3 to = backObj.transform.localScale - new Vector3 (0.2f, 0.2f, 0.0f);
+		StartCoroutine (OutlineSizeChange (from, to));
+	}
+
+	static float animateTime = 0.5f;
+	IEnumerator OutlineSizeChange ( Vector3 fromSize, Vector3 toSize ) {
+		int frames = (int)(animateTime * 30.0f);
+		float t = 0.0f;
+		float step = 1.0f / (float)frames;
+
+		for (int i = 0; i <= frames; i++) {
+			if (i != 0)
+				t += step;
+
+			outlineObj.transform.localScale = Vector3.Lerp (fromSize, toSize, t);
+			yield return new WaitForFixedUpdate ();
+		}
 	}
 }

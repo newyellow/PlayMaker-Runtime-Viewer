@@ -10,51 +10,104 @@ public class StateReciever : MonoBehaviour {
 	public GameObject eventObj;
 	public GameObject lineObj;
 
-
 	GameObject[] eventObjs;
-	List<LineRenderer> lines;
+	List<GameObject> lines;
 	SliderDrag[] sliders;
 
+	// network part
 	NetworkClient client;
+	string serverIp = "127.0.0.1";
+	int serverPort = 12345;
+
+	int nowStateIndex = -1;
 
 	// Use this for initialization
 	void Start () {
+		lines = new List<GameObject> ();
+
 		client = new NetworkClient ();
 		client.RegisterHandler (FsmNetworkMessageType.SendFSM, OnGetFSMData);
+		client.RegisterHandler (FsmNetworkMessageType.PlayMakerStateChange, OnFsmStateChange);
+		client.RegisterHandler (MsgType.Connect, OnConnected);
 		client.RegisterHandler (MsgType.Error, OnError);
+	}
+
+	// use when switch scene
+	void ClearData () {
+
+		nowStateIndex = -1;
+
+		// if there are data inside
+		if (eventObjs != null) {
+			for (int i = 0; i < eventObjs.Length; i++)
+				Destroy (eventObjs [i]);
+			
+			System.Array.Clear (eventObjs, 0, eventObjs.Length);
+		}
+
+		// delete all lines
+		if (lines.Count > 0) {
+			for (int i = 0; i < lines.Count; i++)
+				Destroy (lines [i].gameObject);
+
+			lines.Clear ();
+		}
+
+		// if there are data inside
+		if (sliders != null) {
+			for (int i = 0; i < sliders.Length; i++)
+				Destroy (sliders [i]);
+			
+			System.Array.Clear (sliders, 0, sliders.Length);
+		}
 	}
 	
 	// Update is called once per frame
 	void Update () {
-		if (Input.GetKeyDown (KeyCode.Q)) {
-			client.Connect ("127.0.0.1", 12345);
-		}
 
-		if (Input.GetKeyDown (KeyCode.W)) {
-			SimpleMessage msg = new SimpleMessage ("give me states!");
-			client.Send (FsmNetworkMessageType.RequestFSM, msg);
-		}
 	}
 
 	void OnGUI () {
-		if (client.isConnected)
-			GUILayout.Label ("Connected to " + client.connection.address + " with ID: " + client.connection.connectionId);
-		else
-			GUILayout.Label ("No Connect");
+		if (client.isConnected) {
+			GUILayout.Label ("Server Status: Connected to " + client.serverIp + ":" + client.serverPort);
+		} else {
+			GUILayout.Label ("Server Status: Not Connected");
+
+			GUILayout.BeginHorizontal ();
+
+			GUILayout.Label ("IP : ");
+			serverIp = GUILayout.TextField (serverIp);
+
+			GUILayout.EndHorizontal ();
+			GUILayout.BeginHorizontal ();
+
+			GUILayout.Label ("Port : ");
+			serverPort = System.Convert.ToInt32( GUILayout.TextField (serverPort.ToString ()) );
+
+			GUILayout.EndHorizontal ();
+
+			if (GUILayout.Button ("Connect"))
+				client.Connect (serverIp, serverPort);
+		}
 	}
 
 	public void OnError( NetworkMessage msg ) {
 		
 		Debug.Log ("Conn Error");
+
 	}
 
 	void OnGetFSMData ( NetworkMessage netMsg ) {
+
+		// if switched from other scene
+		ClearData ();
+
 		FSMMessage fmsg = netMsg.ReadMessage<FSMMessage> ();
 		FSMStateContainer[] fsms = fmsg.states;
 
 		eventObjs = new GameObject[fsms.Length];
-		lines = new List<LineRenderer> ();
 		sliders = new SliderDrag[fsms.Length];
+
 		List<SliderDrag> sliderList = new List<SliderDrag> ();
 
 		int sliderIndex = 0;
@@ -88,6 +141,9 @@ public class StateReciever : MonoBehaviour {
 					int targetIndex = fsms [i].transitionTargets [j];
 
 					GameObject lineTemp = (GameObject)Instantiate (lineObj, Vector3.zero, Quaternion.identity);
+					lineTemp.transform.parent = transform;
+					lines.Add (lineTemp);
+
 					LineRenderer line = lineTemp.GetComponent<LineRenderer> ();
 
 					Vector3 lineFrom = eventObjs [i].transform.position;
@@ -118,5 +174,25 @@ public class StateReciever : MonoBehaviour {
 		msg.value = value;
 
 		client.Send (FsmNetworkMessageType.SliderValueChange, msg);
+	}
+
+	void OnFsmStateChange ( NetworkMessage netMsg ) {
+		FSMStateMessage msg = netMsg.ReadMessage<FSMStateMessage> ();
+
+		if (nowStateIndex != -1)
+			eventObjs [nowStateIndex].SendMessage ("StateOff");
+		
+		eventObjs [msg.nowStateIndex].SendMessage ("StateOn");
+		nowStateIndex = msg.nowStateIndex;
+	}
+
+	void OnConnected ( NetworkMessage netMsg ) {
+		SimpleMessage msg = new SimpleMessage ("give me states!");
+		client.Send (FsmNetworkMessageType.RequestFSM, msg);
+	}
+
+	void OnApplicationQuit () {
+		Debug.Log ("client shutdown");
+		client.Shutdown ();
 	}
 }
