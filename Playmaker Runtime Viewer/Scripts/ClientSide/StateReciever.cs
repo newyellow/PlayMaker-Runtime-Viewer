@@ -15,7 +15,8 @@ public class StateReciever : MonoBehaviour {
 
 	GameObject[] eventObjs;
 	List<GameObject> lines;
-	SliderDrag[] sliders;
+
+	List<FSMStateContainer> fsmStateObjs;
 
 	// network part
 	NetworkClient client;
@@ -27,12 +28,15 @@ public class StateReciever : MonoBehaviour {
 	// Use this for initialization
 	void Start () {
 		lines = new List<GameObject> ();
+		fsmStateObjs = new List<FSMStateContainer> ();
 
 		client = new NetworkClient ();
-		client.RegisterHandler (FsmNetworkMessageType.SendFSM, OnGetFSMData);
+		client.RegisterHandler (FsmNetworkMessageType.SendFsmData, OnGetFSMData);
 		client.RegisterHandler (FsmNetworkMessageType.PlayMakerStateChange, OnFsmStateChange);
 		client.RegisterHandler (MsgType.Connect, OnConnected);
 		client.RegisterHandler (MsgType.Error, OnError);
+		client.RegisterHandler (FsmNetworkMessageType.FsmDataSendingStart, FSMDataSendingStart);
+		client.RegisterHandler (FsmNetworkMessageType.FsmDataSendingDone, FSMDataSendingDone);
 	}
 
 	// use when switch scene
@@ -56,13 +60,7 @@ public class StateReciever : MonoBehaviour {
 			lines.Clear ();
 		}
 
-		// if there are data inside
-		if (sliders != null) {
-			for (int i = 0; i < sliders.Length; i++)
-				Destroy (sliders [i]);
-			
-			System.Array.Clear (sliders, 0, sliders.Length);
-		}
+		fsmStateObjs.Clear ();
 	}
 	
 	// Update is called once per frame
@@ -100,48 +98,55 @@ public class StateReciever : MonoBehaviour {
 
 	}
 
+	void FSMDataSendingStart ( NetworkMessage msg ) {
+		// because switch to another scene
+		ClearData ();
+	}
+
+	void FSMDataSendingDone ( NetworkMessage msg ) {
+
+		GenerateObjectsByStates ();
+
+	}
+
 	void OnGetFSMData ( NetworkMessage netMsg ) {
 
-		// if switched from other scene
-		ClearData ();
+		FsmDataMessage dataMsg = netMsg.ReadMessage<FsmDataMessage> ();
+		fsmStateObjs.Add (dataMsg.stateData);
 
-		FSMMessage fmsg = netMsg.ReadMessage<FSMMessage> ();
-		FSMStateContainer[] fsms = fmsg.states;
+	}
 
-		eventObjs = new GameObject[fsms.Length];
-		sliders = new SliderDrag[fsms.Length];
+	void GenerateObjectsByStates () {
+		
+		int fsmStateLength = fsmStateObjs.Count;
+		eventObjs = new GameObject[fsmStateLength];
 
-		List<SliderDrag> sliderList = new List<SliderDrag> ();
-
-		int sliderIndex = 0;
-
-		for (int i = 0; i < fsms.Length; i++) {
+		// create event boxes
+		for (int i = 0; i < fsmStateLength; i++) {
 
 			// create event obj
 			eventObjs [i] = (GameObject)Instantiate (eventObj, new Vector3 (1.0f, i * -1.5f - 1.0f, 0.0f), Quaternion.identity);	
 			eventObjs [i].transform.parent = transform;
 
 			EventObj objScript = eventObjs [i].GetComponent<EventObj> ();
-			objScript.UpdateText (fsms [i].name, fsms[i].description);
+			objScript.UpdateText (fsmStateObjs [i].name, fsmStateObjs[i].description);
 			objScript.UpdateBackSizeByText ();
 
 			// positioning
 			Vector3 pos = new Vector3();
-			pos.x = fsms [i].position.center.x * 0.01f;
-			pos.y = fsms [i].position.center.y * -0.01f;
+			pos.x = fsmStateObjs [i].position.center.x * 0.01f;
+			pos.y = fsmStateObjs [i].position.center.y * -0.01f;
 			pos.z = 0.0f;
 
 			eventObjs [i].transform.position = pos;
 		}
 
-		sliders = sliderList.ToArray ();
-
 		// setting lines after objs inited
-		for (int i = 0; i < fsms.Length; i++) {
-			if (fsms [i].transitionNames.Length > 0) {
-				for (int j = 0; j < fsms [i].transitionNames.Length; j++) {
+		for (int i = 0; i < fsmStateLength; i++) {
+			if (fsmStateObjs [i].transitionNames.Length > 0) {
+				for (int j = 0; j < fsmStateObjs [i].transitionNames.Length; j++) {
 
-					int targetIndex = fsms [i].transitionTargets [j];
+					int targetIndex = fsmStateObjs [i].transitionTargets [j];
 
 					GameObject lineTemp = (GameObject)Instantiate (lineObj, Vector3.zero, Quaternion.identity);
 					lineTemp.transform.parent = transform;
@@ -166,17 +171,9 @@ public class StateReciever : MonoBehaviour {
 			}
 			else
 			{
-					Debug.Log ("No Transition");
+				Debug.Log ("No Transition");
 			}
 		}
-	}
-		
-	public void SliderValueChange( int sliderIndex, float value ) {
-		SliderMessage msg = new SliderMessage ();
-		msg.sliderIndex = sliderIndex;
-		msg.value = value;
-
-		client.Send (FsmNetworkMessageType.SliderValueChange, msg);
 	}
 
 	void OnFsmStateChange ( NetworkMessage netMsg ) {
